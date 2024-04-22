@@ -44,8 +44,7 @@ public class BatchConfiguration {
                      ItemWriter<Person> itemWriter,
                      ItemProcessor<Person, Person> itemProcessor){
         return new StepBuilder("step", jobRepository )
-                .<Person, Person>chunk
-                        (20, plataformTransactionManager)
+                .<Person, Person>chunk(20, plataformTransactionManager)
                 .reader(itemReader)
                 .processor(itemProcessor)
                 .writer(itemWriter)
