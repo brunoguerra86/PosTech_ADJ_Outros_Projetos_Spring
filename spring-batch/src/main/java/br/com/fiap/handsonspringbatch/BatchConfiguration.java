@@ -16,6 +16,7 @@ import org.springframework.batch.item.file.mapping.BeanWrapperFieldSetMapper;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.task.SimpleAsyncTaskExecutor;
 
 import javax.sql.DataSource;
 
@@ -42,6 +43,7 @@ public class BatchConfiguration {
                 .reader(itemReader)
                 .processor(itemProcessor)
                 .writer(itemWriter)
+                .taskExecutor(new SimpleAsyncTaskExecutor())
                 .build();
     }
 
