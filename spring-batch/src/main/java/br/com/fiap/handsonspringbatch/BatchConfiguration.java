@@ -2,10 +2,14 @@ package br.com.fiap.handsonspringbatch;
 
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
+import org.springframework.batch.core.job.builder.FlowBuilder;
 import org.springframework.batch.core.job.builder.JobBuilder;
+import org.springframework.batch.core.job.flow.Flow;
+import org.springframework.batch.core.job.flow.support.SimpleFlow;
 import org.springframework.batch.core.launch.support.RunIdIncrementer;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.builder.StepBuilder;
+import org.springframework.batch.core.step.tasklet.Tasklet;
 import org.springframework.batch.item.ItemProcessor;
 import org.springframework.batch.item.ItemReader;
 import org.springframework.batch.item.ItemWriter;
@@ -13,6 +17,7 @@ import org.springframework.batch.item.database.BeanPropertyItemSqlParameterSourc
 import org.springframework.batch.item.database.builder.JdbcBatchItemWriterBuilder;
 import org.springframework.batch.item.file.builder.FlatFileItemReaderBuilder;
 import org.springframework.batch.item.file.mapping.BeanWrapperFieldSetMapper;
+import org.springframework.batch.repeat.RepeatStatus;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
@@ -24,10 +29,11 @@ import javax.sql.DataSource;
 public class BatchConfiguration {
 
     @Bean
-    public Job processarPerson(JobRepository jobRepository, Step step){
+    public Job processarPerson(JobRepository jobRepository, Flow splitFlow){
         return new JobBuilder("processarPerson", jobRepository)
                 .incrementer(new RunIdIncrementer())
-                .start(step)
+                .start(splitFlow)
+                .end()
                 .build();
     }
 
@@ -45,6 +51,25 @@ public class BatchConfiguration {
                 .writer(itemWriter)
                 .taskExecutor(new SimpleAsyncTaskExecutor())
                 .build();
+    }
+
+    @Bean
+    public Step step2(JobRepository jobRepository,
+                      PlataformTransactionManager plataformTransactionManager,
+                      Tasklet tasklet
+                      ){
+        return new StepBuilder("log4fun", jobRepository)
+                .tasklet(tasklet, plataformTransactionManager)
+                .build();
+    }
+
+    @Bean
+    public Tasklet tasklet(){
+        return ( contribution, chunkContext) -> {
+            System.out.println("Vamos esperar 10 segundos");
+            Thread.sleep(10000);
+            return RepeatStatus.FINISHED;
+        };
     }
 
     @Bean
@@ -75,5 +100,19 @@ public class BatchConfiguration {
     @Bean
     public ItemProcessor<Person, Person> itemProcessor(){
         return new PersonProcessor();
+    }
+
+    @Bean
+    public Flow splitFlow(Step step, Step step2){
+        return new FlowBuilder<SimpleFlow>("simpleFlow")
+                .split(new SimpleAsyncTaskExecutor())
+                .add(flow(step), flow(step2))
+                .build();
+    }
+
+    private SimpleFlow flow(Step step) {
+        return new FlowBuilder<SimpleFlow>("simpleFlow")
+                .start(step)
+                .build();
     }
 }
